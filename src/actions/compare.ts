@@ -34,22 +34,19 @@ export async function saveComparison(data: {
 
 export async function getRecentComparisons(projectId?: number, limit = 10) {
   try {
-    let query = db
-      .select()
-      .from(branchComparisons)
-      .orderBy(desc(branchComparisons.checkedAt))
-      .limit(limit);
+    const result = projectId
+      ? await db
+          .select()
+          .from(branchComparisons)
+          .where(eq(branchComparisons.projectId, projectId))
+          .orderBy(desc(branchComparisons.checkedAt))
+          .limit(limit)
+      : await db
+          .select()
+          .from(branchComparisons)
+          .orderBy(desc(branchComparisons.checkedAt))
+          .limit(limit);
 
-    if (projectId) {
-      query = db
-        .select()
-        .from(branchComparisons)
-        .where(eq(branchComparisons.projectId, projectId))
-        .orderBy(desc(branchComparisons.checkedAt))
-        .limit(limit);
-    }
-
-    const result = await query;
     return { data: result, error: null };
   } catch (error) {
     console.error("Error fetching comparisons:", error);
