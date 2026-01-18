@@ -73,57 +73,63 @@ export function BranchStack({ branches, projectId, featureId, baseBranch = "main
     setTimeout(() => setCopied(null), 2000);
   }
 
-  // Generate batch verification script
+  // Generate batch verification script (read-only, no fetch/pull)
   function generateVerifyScript(): string {
     if (activeBranches.length === 0) return "# No branches to verify";
 
     const lines: string[] = [
       "#!/bin/bash",
-      "# Stack Verification Script",
-      `# Verifies that each branch is properly based on its parent`,
+      "# Stack Verification Script (read-only)",
+      "# Checks each branch is properly rebased on its parent",
+      "# NOTE: Uses local refs only - no remote operations",
       "",
-      "echo '🔍 Verifying branch stack...'",
+      "echo '🔍 Verifying branch stack (local refs)...'",
       "echo ''",
       "ERRORS=0",
       "",
     ];
 
     // First branch should be based on the base branch (main/master)
-    lines.push(`# Check: ${activeBranches[0].name} is based on ${baseBranch}`);
-    lines.push(`if git merge-base --is-ancestor ${baseBranch} ${activeBranches[0].name}; then`);
-    lines.push(`  echo "✅ ${activeBranches[0].name} is based on ${baseBranch}"`);
+    const firstBranch = activeBranches[0].name;
+    lines.push(`# Check 1: ${firstBranch} is based on ${baseBranch}`);
+    lines.push(`if git merge-base --is-ancestor ${baseBranch} ${firstBranch} 2>/dev/null; then`);
+    lines.push(`  echo "✅ 1. ${firstBranch}"`);
+    lines.push(`  echo "   └─ based on ${baseBranch}"`);
     lines.push(`else`);
-    lines.push(`  echo "❌ ${activeBranches[0].name} is NOT based on ${baseBranch}"`);
+    lines.push(`  echo "❌ 1. ${firstBranch}"`);
+    lines.push(`  echo "   └─ NOT based on ${baseBranch}"`);
     lines.push(`  ERRORS=$((ERRORS + 1))`);
     lines.push(`fi`);
-    lines.push("");
+    lines.push("echo ''");
 
     // Check each subsequent branch
     for (let i = 1; i < activeBranches.length; i++) {
       const parent = activeBranches[i - 1].name;
       const child = activeBranches[i].name;
       
-      lines.push(`# Check: ${child} is based on ${parent}`);
-      lines.push(`if git merge-base --is-ancestor ${parent} ${child}; then`);
-      lines.push(`  echo "✅ ${child} is based on ${parent}"`);
+      lines.push(`# Check ${i + 1}: ${child} is based on ${parent}`);
+      lines.push(`if git merge-base --is-ancestor ${parent} ${child} 2>/dev/null; then`);
+      lines.push(`  echo "✅ ${i + 1}. ${child}"`);
+      lines.push(`  echo "   └─ based on ${parent}"`);
       lines.push(`else`);
-      lines.push(`  echo "❌ ${child} is NOT based on ${parent}"`);
+      lines.push(`  echo "❌ ${i + 1}. ${child}"`);
+      lines.push(`  echo "   └─ NOT based on ${parent}"`);
       lines.push(`  ERRORS=$((ERRORS + 1))`);
       lines.push(`fi`);
-      lines.push("");
+      lines.push("echo ''");
     }
 
-    lines.push("echo ''");
     lines.push(`if [ $ERRORS -eq 0 ]; then`);
     lines.push(`  echo "🎉 All ${activeBranches.length} branches are properly stacked!"`);
     lines.push(`else`);
     lines.push(`  echo "⚠️  Found $ERRORS issue(s) in the stack"`);
+    lines.push(`  exit 1`);
     lines.push(`fi`);
 
     return lines.join("\n");
   }
 
-  // Generate one-liner for quick check
+  // Generate one-liner for quick check (read-only, local refs only)
   function generateOneLiner(): string {
     if (activeBranches.length === 0) return "# No branches to verify";
 
@@ -131,7 +137,7 @@ export function BranchStack({ branches, projectId, featureId, baseBranch = "main
     
     // First branch vs base
     checks.push(
-      `(git merge-base --is-ancestor ${baseBranch} ${activeBranches[0].name} && echo "✅ 1. ${activeBranches[0].name} ← ${baseBranch}" || echo "❌ 1. ${activeBranches[0].name} NOT based on ${baseBranch}")`
+      `(git merge-base --is-ancestor ${baseBranch} ${activeBranches[0].name} && echo "✅ 1. ${activeBranches[0].name} ← ${baseBranch}" || echo "❌ 1. NOT OK")`
     );
 
     // Subsequent branches
@@ -139,11 +145,11 @@ export function BranchStack({ branches, projectId, featureId, baseBranch = "main
       const parent = activeBranches[i - 1].name;
       const child = activeBranches[i].name;
       checks.push(
-        `(git merge-base --is-ancestor ${parent} ${child} && echo "✅ ${i + 1}. ${child} ← ${parent}" || echo "❌ ${i + 1}. ${child} NOT based on ${parent}")`
+        `(git merge-base --is-ancestor ${parent} ${child} && echo "✅ ${i + 1}. ${child} ← ${parent}" || echo "❌ ${i + 1}. NOT OK")`
       );
     }
 
-    return checks.join(" && ");
+    return checks.join("; ");
   }
 
   async function copyVerifyScript(type: "full" | "oneliner") {
@@ -177,14 +183,14 @@ export function BranchStack({ branches, projectId, featureId, baseBranch = "main
                   Verify Stack Ancestry
                 </DialogTitle>
                 <DialogDescription>
-                  Check that each branch is properly based on the previous one in the stack.
+                  Check that each branch is properly rebased on the previous one.
                 </DialogDescription>
               </DialogHeader>
               
               <div className="space-y-4 flex-1 overflow-y-auto">
                 {/* Stack visualization */}
                 <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-xs text-muted-foreground mb-3">Checking {activeBranches.length} branches:</p>
+                  <p className="text-xs text-muted-foreground mb-3">Will verify {activeBranches.length} branches (local refs, read-only):</p>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-sm">
                       <code className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{baseBranch}</code>
@@ -238,11 +244,16 @@ export function BranchStack({ branches, projectId, featureId, baseBranch = "main
                   </pre>
                 </div>
 
-                <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
+                <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 space-y-1">
                   <p className="text-xs text-muted-foreground">
                     <Terminal className="h-3.5 w-3.5 inline mr-1.5" />
-                    Run in your repo directory. Make sure all branches are fetched locally.
+                    <strong>Run in your repo directory.</strong> Read-only check:
                   </p>
+                  <ul className="text-xs text-muted-foreground ml-5 list-disc space-y-0.5">
+                    <li>Uses local branch refs only (no fetch/pull)</li>
+                    <li>Does NOT modify any branches</li>
+                    <li>Checks each branch is an ancestor of the next</li>
+                  </ul>
                 </div>
               </div>
             </DialogContent>
