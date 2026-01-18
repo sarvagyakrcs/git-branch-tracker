@@ -2,14 +2,14 @@ import { getProjects } from "@/actions/projects";
 import { ProjectCard } from "@/components/projects/project-card";
 import { ProjectCreateDialog } from "@/components/projects/project-create-dialog";
 import { EmptyState } from "@/components/projects/empty-state";
-import { GitBranch, Sparkles } from "lucide-react";
+import { GitBranch } from "lucide-react";
 
 export default async function HomePage() {
   const { data: projects, error } = await getProjects();
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="min-h-screen">
+      <div className="mx-auto max-w-5xl px-6 py-8">
         {/* Header */}
         <header className="mb-8">
           <div className="flex items-center gap-3">
@@ -17,9 +17,9 @@ export default async function HomePage() {
               <GitBranch className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Branch Tracker</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Branch Tracker</h1>
               <p className="text-sm text-muted-foreground">
-                Manage your stacked diffs
+                Track your stacked diffs
               </p>
             </div>
           </div>
@@ -29,10 +29,9 @@ export default async function HomePage() {
         <section>
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-muted-foreground" />
               <h2 className="text-lg font-medium">Projects</h2>
               {projects && projects.length > 0 && (
-                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   {projects.length}
                 </span>
               )}
@@ -41,10 +40,10 @@ export default async function HomePage() {
           </div>
 
           {error ? (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm">
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
               <p className="font-medium text-destructive">Failed to load projects</p>
-              <p className="mt-1 text-destructive/80">
-                Check your DATABASE_URL in .env file
+              <p className="mt-1 text-sm text-destructive/80">
+                Make sure DATABASE_URL is set in your .env file
               </p>
             </div>
           ) : !projects || projects.length === 0 ? (

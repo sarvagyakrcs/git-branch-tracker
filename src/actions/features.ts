@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { features, branches, type NewFeature } from "@/db/schema";
-import { eq, desc, sql, asc } from "drizzle-orm";
+import { eq, desc, asc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function getFeatures(projectId: number) {
@@ -21,15 +21,15 @@ export async function getFeatures(projectId: number) {
           SELECT COUNT(*) FROM ${branches} 
           WHERE ${branches.featureId} = ${features.id}
         )`.as("branch_count"),
-        activeBranchCount: sql<number>`(
+        prRaisedCount: sql<number>`(
           SELECT COUNT(*) FROM ${branches} 
           WHERE ${branches.featureId} = ${features.id}
-          AND ${branches.isPartOfStack} = true
-        )`.as("active_branch_count"),
+          AND ${branches.status} = 'pr_raised'
+        )`.as("pr_raised_count"),
       })
       .from(features)
       .where(eq(features.projectId, projectId))
-      .orderBy(desc(features.updatedAt));
+      .orderBy(asc(features.identifier));
 
     return { data: result, error: null };
   } catch (error) {
@@ -45,7 +45,7 @@ export async function getFeature(id: number) {
       with: {
         project: true,
         branches: {
-          orderBy: [asc(branches.position)],
+          orderBy: (branches, { asc }) => [asc(branches.position)],
         },
       },
     });

@@ -31,34 +31,29 @@ interface FormData {
   shortName: string;
   status: string;
   prUrl: string;
-  prNumber: string;
   notes: string;
 }
 
-export function BranchCreateDialog({
-  projectId,
-  featureId,
-}: {
-  projectId: number;
+interface BranchCreateDialogProps {
   featureId: number;
-}) {
+  projectId: number;
+  featureIdentifier: string;
+}
+
+export function BranchCreateDialog({
+  featureId,
+  projectId,
+  featureIdentifier,
+}: BranchCreateDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<FormData>({
+  const { register, handleSubmit, reset, setValue, watch } = useForm<FormData>({
     defaultValues: {
       name: "",
       shortName: "",
       status: "active",
       prUrl: "",
-      prNumber: "",
       notes: "",
     },
   });
@@ -69,13 +64,12 @@ export function BranchCreateDialog({
     setIsLoading(true);
     try {
       const result = await createBranch({
-        projectId,
         featureId,
+        projectId,
         name: data.name,
         shortName: data.shortName || null,
         status: data.status,
         prUrl: data.prUrl || null,
-        prNumber: data.prNumber ? parseInt(data.prNumber) : null,
         notes: data.notes || null,
       });
 
@@ -97,8 +91,8 @@ export function BranchCreateDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
+        <Button size="sm">
+          <Plus className="h-4 w-4 mr-2" />
           Add Branch
         </Button>
       </DialogTrigger>
@@ -106,67 +100,55 @@ export function BranchCreateDialog({
         <DialogHeader>
           <DialogTitle>Add Branch</DialogTitle>
           <DialogDescription>
-            Add a new branch to this feature stack.
+            Add a new branch to the {featureIdentifier} stack.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Branch Name *</Label>
+            <Label htmlFor="name">
+              Branch Name <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="name"
-              placeholder="sarvagya-11627-db-infrastructure"
-              {...register("name", { required: "Required" })}
+              placeholder={`e.g., username-${featureIdentifier}-feature-name-1`}
+              {...register("name", { required: true })}
               className="font-mono text-sm"
             />
-            {errors.name && (
-              <p className="text-xs text-destructive">{errors.name.message}</p>
-            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="shortName">Short Name</Label>
             <Input
               id="shortName"
-              placeholder="db-infrastructure"
+              placeholder="e.g., feature-name"
               {...register("shortName")}
             />
             <p className="text-xs text-muted-foreground">
-              Optional friendly name for display
+              A shorter name for display purposes
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={status} onValueChange={(v) => setValue("status", v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="pr_raised">PR Raised</SelectItem>
-                  <SelectItem value="merged">Merged</SelectItem>
-                  <SelectItem value="blocked">Blocked</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="prNumber">PR Number</Label>
-              <Input
-                id="prNumber"
-                placeholder="1234"
-                {...register("prNumber")}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={status} onValueChange={(v) => setValue("status", v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pr_raised">PR Raised</SelectItem>
+                <SelectItem value="merged">Merged</SelectItem>
+                <SelectItem value="blocked">Blocked</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="prUrl">PR URL</Label>
             <Input
               id="prUrl"
-              placeholder="https://github.com/org/repo/pull/1234"
+              placeholder="https://github.com/org/repo/pull/123"
               {...register("prUrl")}
             />
           </div>
@@ -175,7 +157,7 @@ export function BranchCreateDialog({
             <Label htmlFor="notes">Notes</Label>
             <Textarea
               id="notes"
-              placeholder="Optional notes..."
+              placeholder="Any notes..."
               rows={2}
               {...register("notes")}
               className="resize-none"

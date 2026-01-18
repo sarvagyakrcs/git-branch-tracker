@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { branches, features, type NewBranch } from "@/db/schema";
-import { eq, asc, and, desc } from "drizzle-orm";
+import { eq, asc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function getBranches(featureId: number) {
@@ -42,15 +42,13 @@ export async function getBranch(id: number) {
 
 export async function createBranch(data: NewBranch & { projectId: number }) {
   try {
-    // Get the highest position for this feature
-    const existing = await db
-      .select({ position: branches.position })
+    // Get the max position for this feature
+    const maxPosition = await db
+      .select({ max: sql<number>`COALESCE(MAX(${branches.position}), 0)` })
       .from(branches)
-      .where(eq(branches.featureId, data.featureId))
-      .orderBy(desc(branches.position))
-      .limit(1);
+      .where(eq(branches.featureId, data.featureId));
 
-    const nextPosition = existing.length > 0 ? existing[0].position + 1 : 1;
+    const newPosition = (maxPosition[0]?.max || 0) + 1;
 
     const [newBranch] = await db
       .insert(branches)
@@ -58,11 +56,10 @@ export async function createBranch(data: NewBranch & { projectId: number }) {
         featureId: data.featureId,
         name: data.name,
         shortName: data.shortName || null,
-        position: nextPosition,
+        position: newPosition,
         status: data.status || "active",
         prUrl: data.prUrl || null,
         prNumber: data.prNumber || null,
-        prStatus: data.prStatus || null,
         notes: data.notes || null,
         isPartOfStack: data.isPartOfStack ?? true,
       })
@@ -116,16 +113,16 @@ export async function deleteBranch(
 export async function reorderBranches(
   featureId: number,
   projectId: number,
-  orderedIds: number[]
+  branchIds: number[]
 ) {
   try {
-    // Update positions based on the order
+    // Update positions based on array order
     await Promise.all(
-      orderedIds.map((id, index) =>
+      branchIds.map((id, index) =>
         db
           .update(branches)
           .set({ position: index + 1, updatedAt: new Date() })
-          .where(and(eq(branches.id, id), eq(branches.featureId, featureId)))
+          .where(eq(branches.id, id))
       )
     );
 
@@ -137,18 +134,16 @@ export async function reorderBranches(
   }
 }
 
-export async function getAllBranchesForProject(projectId: number) {
+// Get all branches for a project (for compare tool)
+export async function getProjectBranches(projectId: number) {
   try {
     const result = await db
       .select({
         id: branches.id,
         name: branches.name,
-        shortName: branches.shortName,
         featureId: branches.featureId,
         featureIdentifier: features.identifier,
         featureName: features.name,
-        status: branches.status,
-        position: branches.position,
       })
       .from(branches)
       .innerJoin(features, eq(branches.featureId, features.id))
@@ -157,7 +152,7 @@ export async function getAllBranchesForProject(projectId: number) {
 
     return { data: result, error: null };
   } catch (error) {
-    console.error("Error fetching all branches:", error);
+    console.error("Error fetching project branches:", error);
     return { data: null, error: "Failed to fetch branches" };
   }
 }

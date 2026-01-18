@@ -1,12 +1,9 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getFeature } from "@/actions/features";
 import { BranchStack } from "@/components/branches/branch-stack";
 import { BranchCreateDialog } from "@/components/branches/branch-create-dialog";
-import { EmptyBranches } from "@/components/branches/empty-branches";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, GitBranch } from "lucide-react";
-import Link from "next/link";
-import { notFound } from "next/navigation";
+import { ChevronLeft, GitBranch } from "lucide-react";
 
 interface Props {
   params: Promise<{ projectId: string; featureId: string }>;
@@ -14,60 +11,60 @@ interface Props {
 
 export default async function FeaturePage({ params }: Props) {
   const { projectId, featureId } = await params;
-  const projId = parseInt(projectId);
-  const featId = parseInt(featureId);
+  const pId = parseInt(projectId);
+  const fId = parseInt(featureId);
 
-  const { data: feature, error } = await getFeature(featId);
+  const { data: feature, error } = await getFeature(fId);
 
-  if (!feature || error) {
+  if (error || !feature) {
     notFound();
   }
 
-  const activeBranches = feature.branches.filter((b) => b.isPartOfStack);
-  const deprecatedBranches = feature.branches.filter((b) => !b.isPartOfStack);
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-4xl px-6 py-8">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+          <Link href="/" className="hover:text-foreground transition-colors">
+            Projects
+          </Link>
+          <ChevronLeft className="h-4 w-4 rotate-180" />
+          <Link
+            href={`/projects/${pId}`}
+            className="hover:text-foreground transition-colors"
+          >
+            {feature.project.name}
+          </Link>
+          <ChevronLeft className="h-4 w-4 rotate-180" />
+          <span className="text-foreground">{feature.identifier}</span>
+        </div>
+
         {/* Header */}
         <header className="mb-8">
-          <div className="mb-4">
-            <Link href={`/projects/${projId}`}>
-              <Button variant="ghost" size="sm" className="gap-2 -ml-2 text-muted-foreground">
-                <ArrowLeft className="h-4 w-4" />
-                {feature.project.name}
-              </Button>
-            </Link>
-          </div>
-
           <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-3">
-                <div
-                  className="h-10 w-10 rounded-lg flex items-center justify-center text-sm font-bold"
-                  style={{
-                    backgroundColor: `${feature.color}20`,
-                    color: feature.color || "#6366f1",
-                  }}
-                >
-                  {feature.identifier.slice(0, 4)}
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">
-                    {feature.name}
-                  </h1>
-                  <p className="text-sm text-muted-foreground font-mono">
-                    #{feature.identifier}
+            <div className="flex items-center gap-3">
+              <div
+                className="h-4 w-4 rounded-full"
+                style={{ backgroundColor: feature.color || "#6366f1" }}
+              />
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  <span className="font-mono">{feature.identifier}</span>
+                  <span className="text-muted-foreground mx-2">•</span>
+                  {feature.name}
+                </h1>
+                {feature.description && (
+                  <p className="mt-1 text-muted-foreground">
+                    {feature.description}
                   </p>
-                </div>
+                )}
               </div>
-              {feature.description && (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  {feature.description}
-                </p>
-              )}
             </div>
-            <BranchCreateDialog projectId={projId} featureId={featId} />
+            <BranchCreateDialog
+              featureId={fId}
+              projectId={pId}
+              featureIdentifier={feature.identifier}
+            />
           </div>
         </header>
 
@@ -76,54 +73,36 @@ export default async function FeaturePage({ params }: Props) {
           <div className="mb-4 flex items-center gap-2">
             <GitBranch className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-lg font-medium">Branch Stack</h2>
-            {activeBranches.length > 0 && (
-              <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                {activeBranches.length}
+            {feature.branches.length > 0 && (
+              <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                {feature.branches.length}
               </span>
             )}
           </div>
 
+          {/* Master branch indicator */}
+          <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground pl-4">
+            <div className="h-2 w-2 rounded-full bg-muted-foreground" />
+            <span className="font-mono">{feature.project.masterBranch}</span>
+            <span className="text-xs">(base)</span>
+          </div>
+
           {feature.branches.length === 0 ? (
-            <EmptyBranches projectId={projId} featureId={featId} />
-          ) : (
-            <div className="space-y-6">
-              {/* Base branch indicator */}
-              <div className="flex items-center gap-3 pl-4">
-                <Badge variant="outline" className="font-mono text-xs">
-                  {feature.project.masterBranch}
-                </Badge>
-                <span className="text-xs text-muted-foreground">base branch</span>
-              </div>
-
-              {/* Stack connector */}
-              {activeBranches.length > 0 && (
-                <div className="relative">
-                  <div className="absolute left-6 top-0 bottom-0 w-px bg-border" />
-                  <BranchStack
-                    branches={activeBranches}
-                    projectId={projId}
-                    featureId={featId}
-                  />
-                </div>
-              )}
-
-              {/* Deprecated branches */}
-              {deprecatedBranches.length > 0 && (
-                <div className="mt-8">
-                  <h3 className="mb-3 text-sm font-medium text-muted-foreground">
-                    Deprecated ({deprecatedBranches.length})
-                  </h3>
-                  <div className="space-y-2 opacity-60">
-                    <BranchStack
-                      branches={deprecatedBranches}
-                      projectId={projId}
-                      featureId={featId}
-                      isDeprecated
-                    />
-                  </div>
-                </div>
-              )}
+            <div className="rounded-lg border border-dashed p-8 text-center ml-4">
+              <GitBranch className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+              <p className="text-muted-foreground mb-4">No branches in this stack</p>
+              <BranchCreateDialog
+                featureId={fId}
+                projectId={pId}
+                featureIdentifier={feature.identifier}
+              />
             </div>
+          ) : (
+            <BranchStack
+              branches={feature.branches}
+              projectId={pId}
+              featureId={fId}
+            />
           )}
         </section>
       </div>

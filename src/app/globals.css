@@ -3,6 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Force dark mode - no light mode */
 :root {
   color-scheme: dark;
 }
@@ -46,46 +47,55 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* Dark mode only - clean developer-focused theme */
+/* Dark mode only - these are the root values */
 :root {
-  --radius: 0.5rem;
-  --background: oklch(0.12 0.005 260);
+  --radius: 0.625rem;
+  --background: oklch(0.09 0.01 270);
   --foreground: oklch(0.95 0 0);
-  --card: oklch(0.16 0.005 260);
+  --card: oklch(0.14 0.01 270);
   --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.14 0.005 260);
+  --popover: oklch(0.12 0.01 270);
   --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.65 0.15 260);
+  --primary: oklch(0.65 0.2 265);
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.22 0.01 260);
+  --secondary: oklch(0.22 0.02 270);
   --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.22 0.005 260);
-  --muted-foreground: oklch(0.6 0 0);
-  --accent: oklch(0.22 0.01 260);
+  --muted: oklch(0.2 0.01 270);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.25 0.03 270);
   --accent-foreground: oklch(0.95 0 0);
-  --destructive: oklch(0.6 0.2 25);
-  --border: oklch(0.28 0.01 260);
-  --input: oklch(0.22 0.01 260);
-  --ring: oklch(0.65 0.15 260);
+  --destructive: oklch(0.65 0.2 25);
+  --border: oklch(0.3 0.02 270);
+  --input: oklch(0.25 0.02 270);
+  --ring: oklch(0.65 0.2 265);
   
-  /* Chart colors */
-  --chart-1: oklch(0.65 0.15 260);
-  --chart-2: oklch(0.65 0.15 180);
-  --chart-3: oklch(0.7 0.15 85);
-  --chart-4: oklch(0.6 0.18 330);
-  --chart-5: oklch(0.65 0.18 30);
+  /* Chart colors - vibrant for dark mode */
+  --chart-1: oklch(0.7 0.2 265);
+  --chart-2: oklch(0.7 0.18 180);
+  --chart-3: oklch(0.75 0.15 85);
+  --chart-4: oklch(0.65 0.22 330);
+  --chart-5: oklch(0.7 0.2 30);
   
   /* Sidebar */
-  --sidebar: oklch(0.14 0.005 260);
+  --sidebar: oklch(0.11 0.01 270);
   --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.65 0.15 260);
+  --sidebar-primary: oklch(0.65 0.2 265);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.22 0.01 260);
+  --sidebar-accent: oklch(0.2 0.02 270);
   --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(0.28 0.01 260);
-  --sidebar-ring: oklch(0.65 0.15 260);
+  --sidebar-border: oklch(0.25 0.02 270);
+  --sidebar-ring: oklch(0.65 0.2 265);
+
+  /* Custom status colors */
+  --status-active: oklch(0.7 0.18 145);
+  --status-pr-raised: oklch(0.65 0.2 265);
+  --status-merged: oklch(0.65 0.2 300);
+  --status-deprecated: oklch(0.5 0.02 270);
+  --status-blocked: oklch(0.65 0.2 25);
 }
 
 @layer base {
@@ -94,5 +104,63 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Custom utilities */
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      oklch(0.8 0.15 265) 0%,
+      oklch(0.7 0.2 300) 50%,
+      oklch(0.75 0.18 200) 100%
+    );
+  }
+  
+  .bg-grid {
+    background-image: 
+      linear-gradient(to right, oklch(0.25 0.02 270 / 0.3) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(0.25 0.02 270 / 0.3) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  
+  .bg-glow {
+    background: radial-gradient(
+      ellipse 80% 50% at 50% -20%,
+      oklch(0.5 0.15 265 / 0.3),
+      transparent
+    );
+  }
+}
+
+/* Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px oklch(0.65 0.2 265 / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px oklch(0.65 0.2 265 / 0.5);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
 }
