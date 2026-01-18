@@ -50,6 +50,9 @@ export async function createBranch(data: NewBranch & { projectId: number }) {
 
     const newPosition = (maxPosition[0]?.max || 0) + 1;
 
+    // Determine default status based on isPlanned
+    const defaultStatus = data.isPlanned ? "planned" : "active";
+
     const [newBranch] = await db
       .insert(branches)
       .values({
@@ -57,11 +60,12 @@ export async function createBranch(data: NewBranch & { projectId: number }) {
         name: data.name,
         shortName: data.shortName || null,
         position: newPosition,
-        status: data.status || "active",
+        status: data.status || defaultStatus,
         prUrl: data.prUrl || null,
         prNumber: data.prNumber || null,
         notes: data.notes || null,
         isPartOfStack: data.isPartOfStack ?? true,
+        isPlanned: data.isPlanned ?? false,
       })
       .returning();
 

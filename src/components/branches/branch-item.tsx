@@ -35,6 +35,8 @@ import {
   CheckCircle2,
   GitMerge,
   Ban,
+  Lightbulb,
+  Rocket,
 } from "lucide-react";
 import { deleteBranch, updateBranch } from "@/actions/branches";
 import { toast } from "sonner";
@@ -55,13 +57,11 @@ interface BranchItemProps {
 }
 
 const STAGE_MENU_ITEMS = [
-  { key: "created", label: "Created", icon: Circle },
-  { key: "wip", label: "WIP", icon: RotateCcw },
-  { key: "pr_created", label: "PR Created", icon: GitPullRequest },
-  { key: "in_review", label: "In Review", icon: Eye },
-  { key: "changes_requested", label: "Changes Requested", icon: MessageSquare },
-  { key: "approved", label: "Approved", icon: CheckCircle2 },
+  { key: "planned", label: "Planned", icon: Lightbulb },
+  { key: "active", label: "Active", icon: Circle },
+  { key: "pr_raised", label: "PR Raised", icon: GitPullRequest },
   { key: "merged", label: "Merged", icon: GitMerge },
+  { key: "blocked", label: "Blocked", icon: Ban },
   { key: "deprecated", label: "Deprecated", icon: Ban },
 ];
 
@@ -80,6 +80,7 @@ export function BranchItem({
   const [editOpen, setEditOpen] = useState(false);
 
   const isDeprecated = branch.status === "deprecated" || !branch.isPartOfStack;
+  const isPlanned = branch.isPlanned || branch.status === "planned";
 
   async function handleCopy() {
     await navigator.clipboard.writeText(branch.name);
@@ -114,6 +115,22 @@ export function BranchItem({
     }
   }
 
+  async function handleRealize() {
+    const result = await updateBranch(branch.id, {
+      status: "active",
+      isPlanned: false,
+      projectId,
+      featureId,
+    });
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Branch realized! Don't forget to create it in git.", {
+        description: `git checkout -b ${branch.name}`,
+      });
+    }
+  }
+
   return (
     <TooltipProvider delayDuration={300}>
       <div className="relative flex items-start gap-3 py-1.5 group/item">
@@ -125,6 +142,8 @@ export function BranchItem({
               className={`relative z-10 mt-3.5 h-4 w-4 rounded-full border-2 transition-all cursor-pointer hover:scale-110 ${
                 isSelected
                   ? "border-primary bg-primary shadow-md shadow-primary/30"
+                  : isPlanned
+                  ? "border-amber-500/60 bg-background border-dashed hover:border-amber-500 hover:bg-amber-500/10"
                   : isDeprecated
                   ? "border-muted-foreground/30 bg-background hover:border-primary/50"
                   : "border-primary/60 bg-background hover:border-primary hover:bg-primary/10"
@@ -135,11 +154,18 @@ export function BranchItem({
                   {selectionOrder}
                 </span>
               )}
+              {isPlanned && !isSelected && (
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <Lightbulb className="h-2.5 w-2.5 text-amber-500" />
+                </span>
+              )}
             </button>
           </TooltipTrigger>
           <TooltipContent side="left" className="text-xs">
             {isSelected 
               ? `Selected as ${selectionOrder === 1 ? "parent" : "child"}`
+              : isPlanned
+              ? "Planned branch (not in git yet)"
               : "Click to select for compare"
             }
           </TooltipContent>
@@ -147,10 +173,12 @@ export function BranchItem({
 
         {/* Branch card */}
         <Card
-          className={`flex-1 border-border/50 transition-all duration-150 ${
-            isDeprecated 
-              ? "opacity-50 bg-card/30" 
-              : "bg-card/50 hover:bg-card/80 hover:border-border"
+          className={`flex-1 transition-all duration-150 ${
+            isPlanned
+              ? "border-dashed border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/60"
+              : isDeprecated 
+              ? "opacity-50 bg-card/30 border-border/50" 
+              : "bg-card/50 hover:bg-card/80 hover:border-border border-border/50"
           } ${isSelected ? "ring-1 ring-primary/40 bg-primary/5" : ""}`}
         >
           <CardContent className="p-3">
@@ -181,7 +209,13 @@ export function BranchItem({
 
                 {/* Status row */}
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
-                  <BranchLifecycle status={branch.status} compact />
+                  {isPlanned && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                      <Lightbulb className="h-3 w-3" />
+                      Planned
+                    </span>
+                  )}
+                  {!isPlanned && <BranchLifecycle status={branch.status} compact />}
 
                   {branch.prUrl && (
                     <Tooltip>
@@ -234,6 +268,18 @@ export function BranchItem({
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </DropdownMenuItem>
+                  {isPlanned && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={handleRealize}
+                        className="text-amber-400 focus:text-amber-400"
+                      >
+                        <Rocket className="h-4 w-4 mr-2" />
+                        Realize (mark as created)
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>

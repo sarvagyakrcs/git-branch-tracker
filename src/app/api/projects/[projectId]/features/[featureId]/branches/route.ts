@@ -50,7 +50,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    const { name, shortName, status, prUrl, prNumber, notes, isPartOfStack } = body;
+    const { name, shortName, status, prUrl, prNumber, notes, isPartOfStack, isPlanned } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -67,6 +67,9 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const nextPosition = (maxPos?.maxPosition || 0) + 1;
 
+    // Determine default status based on isPlanned
+    const defaultStatus = isPlanned ? "planned" : "active";
+
     const [branch] = await db
       .insert(branches)
       .values({
@@ -74,11 +77,12 @@ export async function POST(request: Request, { params }: RouteParams) {
         name,
         shortName: shortName || null,
         position: nextPosition,
-        status: status || "active",
+        status: status || defaultStatus,
         prUrl: prUrl || null,
         prNumber: prNumber || null,
         notes: notes || null,
         isPartOfStack: isPartOfStack !== false,
+        isPlanned: isPlanned || false,
       })
       .returning();
 

@@ -50,7 +50,7 @@ export const branches = pgTable("branches", {
   parentBranchId: integer("parent_branch_id"),
 
   // Status tracking
-  // 'active' | 'pr_raised' | 'merged' | 'deprecated' | 'blocked'
+  // 'planned' | 'active' | 'pr_raised' | 'merged' | 'deprecated' | 'blocked'
   status: varchar("status", { length: 50 }).notNull().default("active"),
 
   // PR information
@@ -61,6 +61,9 @@ export const branches = pgTable("branches", {
   // Notes
   notes: text("notes"),
   isPartOfStack: boolean("is_part_of_stack").notNull().default(true),
+  
+  // Plan mode - branch exists only in tracker, not in git yet
+  isPlanned: boolean("is_planned").notNull().default(false),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

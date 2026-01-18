@@ -20,15 +20,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, Lightbulb } from "lucide-react";
 import { updateBranch } from "@/actions/branches";
 import { toast } from "sonner";
 import { BranchLifecycle, LIFECYCLE_STAGES } from "./branch-lifecycle";
 import type { Branch } from "@/db/schema";
 
 const ALL_STAGES = [
+  { key: "planned", label: "Planned" },
   ...LIFECYCLE_STAGES.map(s => ({ key: s.key, label: s.label })),
-  { key: "changes_requested", label: "Changes Requested" },
+  { key: "blocked", label: "Blocked" },
   { key: "deprecated", label: "Deprecated" },
 ];
 
@@ -39,6 +41,7 @@ interface FormData {
   prNumber: string;
   notes: string;
   isPartOfStack: boolean;
+  isPlanned: boolean;
 }
 
 interface BranchEditSheetProps {
@@ -66,6 +69,7 @@ export function BranchEditSheet({
       prNumber: branch.prNumber?.toString() || "",
       notes: branch.notes || "",
       isPartOfStack: branch.isPartOfStack,
+      isPlanned: branch.isPlanned,
     },
   });
 
@@ -78,11 +82,13 @@ export function BranchEditSheet({
         prNumber: branch.prNumber?.toString() || "",
         notes: branch.notes || "",
         isPartOfStack: branch.isPartOfStack,
+        isPlanned: branch.isPlanned,
       });
     }
   }, [open, branch, reset]);
 
   const status = watch("status");
+  const isPlanned = watch("isPlanned");
 
   async function onSubmit(data: FormData) {
     setIsLoading(true);
@@ -94,6 +100,7 @@ export function BranchEditSheet({
         prNumber: data.prNumber ? parseInt(data.prNumber) : null,
         notes: data.notes || null,
         isPartOfStack: data.isPartOfStack,
+        isPlanned: data.isPlanned,
         projectId,
         featureId,
       });
@@ -121,28 +128,62 @@ export function BranchEditSheet({
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto px-4 pb-4">
           <div className="space-y-5">
-            {/* Stage progress */}
-            <div className="rounded-lg border bg-muted/30 p-4">
-              <p className="text-xs text-muted-foreground mb-3">Progress</p>
-              <BranchLifecycle status={status} />
+            {/* Plan Mode Toggle */}
+            <div className={`flex items-center justify-between p-3 rounded-lg border ${isPlanned ? "bg-amber-500/10 border-amber-500/30" : "bg-muted/30"}`}>
+              <div className="flex items-center gap-3">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isPlanned ? "bg-amber-500/20" : "bg-muted"}`}>
+                  <Lightbulb className={`h-4 w-4 ${isPlanned ? "text-amber-400" : "text-muted-foreground"}`} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">
+                    {isPlanned ? "Planned Branch" : "Realized Branch"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {isPlanned 
+                      ? "Not created in git yet" 
+                      : "Exists in git repository"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={isPlanned}
+                onCheckedChange={(checked) => {
+                  setValue("isPlanned", checked);
+                  if (checked) {
+                    setValue("status", "planned");
+                  } else if (status === "planned") {
+                    setValue("status", "active");
+                  }
+                }}
+              />
             </div>
 
+            {/* Stage progress */}
+            {!isPlanned && (
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <p className="text-xs text-muted-foreground mb-3">Progress</p>
+                <BranchLifecycle status={status} />
+              </div>
+            )}
+
             {/* Stage selector */}
-            <div className="space-y-2">
-              <Label>Stage</Label>
-              <Select value={status} onValueChange={(v) => setValue("status", v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ALL_STAGES.map((stage) => (
-                    <SelectItem key={stage.key} value={stage.key}>
-                      {stage.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!isPlanned && (
+              <div className="space-y-2">
+                <Label>Stage</Label>
+                <Select value={status} onValueChange={(v) => setValue("status", v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_STAGES.filter(s => s.key !== "planned").map((stage) => (
+                      <SelectItem key={stage.key} value={stage.key}>
+                        {stage.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Branch Name</Label>

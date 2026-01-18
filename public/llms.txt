@@ -7,7 +7,14 @@ It helps developers track the order and status of branches in a stack, verify an
 and manage PR workflows.
 
 ## Base URL
-Replace {BASE_URL} with your deployment URL (e.g., http://localhost:3000 or https://your-app.vercel.app)
+Replace {BASE_URL} with your deployment URL.
+
+The app uses the environment variable NEXT_PUBLIC_PROJECT_URL to configure the base URL.
+If not set, it defaults to http://localhost:3000.
+
+Examples:
+- Local development: http://localhost:3000
+- Production: https://your-app.vercel.app
 
 ## Data Model
 
@@ -42,13 +49,26 @@ Fields:
 - name: string (required) - full branch name, e.g., "sarvagya-11627-db-infrastructure"
 - shortName: string | null - short description
 - position: number - order in the stack (1-based)
-- status: string - one of: "active", "pr_raised", "merged", "deprecated", "blocked"
+- status: string - one of: "planned", "active", "pr_raised", "merged", "deprecated", "blocked"
 - prUrl: string | null - URL to the pull request
 - prNumber: number | null - PR number
 - notes: string | null
 - isPartOfStack: boolean (default: true) - whether this branch is actively part of the stack
+- isPlanned: boolean (default: false) - whether this branch exists only in the tracker (not in git yet)
 - createdAt: timestamp
 - updatedAt: timestamp
+
+### Plan Mode
+Branches can be created in "plan mode" where they exist only in the tracker, not in git.
+This allows you to plan your branch stack before creating actual git branches.
+
+To create a planned branch:
+- Set isPlanned: true when creating the branch
+- The default status will be "planned"
+
+To "realize" a planned branch (mark it as created):
+- Set isPlanned: false and status: "active"
+- Then create the actual git branch with: git checkout -b {branch-name}
 
 ## API Endpoints
 
@@ -323,7 +343,25 @@ PUT /api/projects/{projectId}/features/{featureId}/branches/{branchId}
   "status": "deprecated"
 }
 
+### 6. Planning your stack before creating branches
+Create planned branches to map out your stack:
+POST /api/projects/{projectId}/features/{featureId}/branches
+{
+  "name": "username-12345-planned-branch",
+  "notes": "This branch will handle X",
+  "isPlanned": true
+}
+
+### 7. Realizing a planned branch (marking it as created in git)
+PUT /api/projects/{projectId}/features/{featureId}/branches/{branchId}
+{
+  "isPlanned": false,
+  "status": "active"
+}
+Then run: git checkout -b {branch-name}
+
 ## Branch Status Values
+- "planned": Branch exists only in tracker, not created in git yet
 - "active": Branch is being actively worked on
 - "pr_raised": Pull request has been created
 - "merged": Branch has been merged into its parent
@@ -350,4 +388,233 @@ consider adding authentication middleware.
 
 ## Rate Limiting
 No rate limiting is currently enforced. Be respectful of server resources.
+
+---
+
+## AI Coding Agent Integration
+
+### For Claude Code, Cursor, Cline, Aider, and similar agents
+
+This section explains how AI coding assistants can integrate with Branch Tracker
+to help developers manage their stacked diffs workflow.
+
+### Setup Instructions for Users
+
+1. Deploy Branch Tracker (locally or on Vercel)
+2. Set the NEXT_PUBLIC_PROJECT_URL environment variable (or use default localhost:3000)
+3. Add this to your agent's context/instructions:
+
+```
+I use Branch Tracker to manage my stacked diffs.
+API Base URL: http://localhost:3000 (or your deployed URL)
+API Reference: {BASE_URL}/llms.txt
+
+When I'm working on branches:
+- Check my current branches: GET /api/projects/{projectId}/features/{featureId}
+- After creating a new branch, register it in Branch Tracker
+- After raising a PR, update the branch status to "pr_raised"
+- After merging, update status to "merged"
+```
+
+### Claude Code Integration
+
+Add to your CLAUDE.md or project instructions:
+
+```markdown
+## Branch Tracking
+
+This project uses Branch Tracker for stacked diffs management.
+API: http://localhost:3000
+
+### When creating a new branch:
+1. Create the git branch as usual
+2. Register it: POST /api/projects/1/features/1/branches
+   Body: {"name": "branch-name", "notes": "what this branch does"}
+
+### When raising a PR:
+Update the branch: PUT /api/projects/1/features/1/branches/{id}
+Body: {"status": "pr_raised", "prUrl": "...", "prNumber": 123}
+
+### To check stack health:
+GET /api/projects/1/features/1/verify-stack
+Then run the returned script in the terminal.
+```
+
+### Cursor Integration
+
+Add to your .cursorrules file:
+
+```
+# Branch Tracker Integration
+When working with git branches in this project:
+1. The project uses stacked diffs tracked at http://localhost:3000
+2. After creating branches, register them via the API
+3. Keep branch statuses updated (active → pr_raised → merged)
+4. Use /verify-stack endpoint to check branch ancestry before rebasing
+```
+
+### Cline Integration
+
+Add to your cline_docs/projectContext.md:
+
+```markdown
+## Stacked Diffs Workflow
+
+We use Branch Tracker (http://localhost:3000) to manage branch stacks.
+
+Key API endpoints:
+- GET /api/projects - list projects
+- GET /api/projects/{id}/features/{id} - get feature with all branches
+- POST .../branches - register new branch
+- PUT .../branches/{id} - update branch status
+- GET .../verify-stack - get ancestry verification script
+
+Branch statuses: active, pr_raised, merged, deprecated, blocked
+```
+
+### Example Agent Prompts
+
+#### "Register my current branch"
+```
+The agent should:
+1. Run `git branch --show-current` to get branch name
+2. POST to /api/projects/{projectId}/features/{featureId}/branches
+   with {"name": "<branch-name>"}
+```
+
+#### "Update branch status after PR"
+```
+The agent should:
+1. Identify the branch ID from the tracker
+2. PUT to /api/projects/{pid}/features/{fid}/branches/{bid}
+   with {"status": "pr_raised", "prUrl": "...", "prNumber": ...}
+```
+
+#### "Check if my stack is healthy"
+```
+The agent should:
+1. GET /api/projects/{pid}/features/{fid}/verify-stack
+2. Execute the returned `oneLiner` or `script` in terminal
+3. Report results to user
+```
+
+#### "Show me my branch stack"
+```
+The agent should:
+1. GET /api/projects/{pid}/features/{fid}
+2. Display branches in order with their statuses
+3. Highlight any issues (deprecated branches, blocked, etc.)
+```
+
+### MCP (Model Context Protocol) Style Usage
+
+If your agent supports tool use, here are the tool definitions:
+
+```json
+{
+  "name": "branch_tracker_list_branches",
+  "description": "List all branches in a feature stack",
+  "parameters": {
+    "projectId": "number",
+    "featureId": "number"
+  }
+}
+```
+
+```json
+{
+  "name": "branch_tracker_register_branch",
+  "description": "Register a new branch in the tracker",
+  "parameters": {
+    "projectId": "number",
+    "featureId": "number",
+    "branchName": "string",
+    "notes": "string (optional)"
+  }
+}
+```
+
+```json
+{
+  "name": "branch_tracker_update_status",
+  "description": "Update a branch's status",
+  "parameters": {
+    "projectId": "number",
+    "featureId": "number", 
+    "branchId": "number",
+    "status": "active | pr_raised | merged | deprecated | blocked",
+    "prUrl": "string (optional)",
+    "prNumber": "number (optional)"
+  }
+}
+```
+
+```json
+{
+  "name": "branch_tracker_verify_stack",
+  "description": "Get commands to verify branch stack ancestry",
+  "parameters": {
+    "projectId": "number",
+    "featureId": "number"
+  }
+}
+```
+
+### Automated Workflows
+
+#### Git Hook Integration
+Add to .git/hooks/post-checkout to auto-register branches:
+
+```bash
+#!/bin/bash
+BRANCH=$(git branch --show-current)
+TRACKER_URL="http://localhost:3000"
+PROJECT_ID=1
+FEATURE_ID=1
+
+# Check if branch exists in tracker
+EXISTS=$(curl -s "$TRACKER_URL/api/projects/$PROJECT_ID/features/$FEATURE_ID/branches" | grep -c "$BRANCH")
+
+if [ "$EXISTS" -eq 0 ]; then
+  echo "Registering branch $BRANCH in Branch Tracker..."
+  curl -s -X POST "$TRACKER_URL/api/projects/$PROJECT_ID/features/$FEATURE_ID/branches" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\": \"$BRANCH\"}"
+fi
+```
+
+#### CI/CD Integration
+Update branch status when PR is merged:
+
+```yaml
+# GitHub Actions example
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  update-tracker:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Branch Tracker
+        run: |
+          curl -X PUT "${{ secrets.TRACKER_URL }}/api/projects/1/features/1/branches/${{ env.BRANCH_ID }}" \
+            -H "Content-Type: application/json" \
+            -d '{"status": "merged"}'
+```
+
+### Best Practices for AI Agents
+
+1. **Always check existing state first**: GET the current branches before creating/updating
+2. **Use meaningful notes**: Include context about what each branch does
+3. **Keep statuses current**: Update status promptly when PR state changes
+4. **Verify before rebase**: Always run verify-stack before complex rebases
+5. **Handle errors gracefully**: Check for error responses and inform the user
+
+### Troubleshooting
+
+**Branch not found**: The branch might be registered under a different name or feature
+**Stack verification fails**: Branches may need rebasing - use the verify-stack output to identify issues
+**API returns 500**: Check that the database is accessible and migrations are run
 

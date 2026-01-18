@@ -56,7 +56,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       );
     }
 
-    const { name, shortName, position, status, prUrl, prNumber, notes, isPartOfStack } = body;
+    const { name, shortName, position, status, prUrl, prNumber, notes, isPartOfStack, isPlanned } = body;
 
     const [updated] = await db
       .update(branches)
@@ -69,6 +69,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         ...(prNumber !== undefined && { prNumber }),
         ...(notes !== undefined && { notes }),
         ...(isPartOfStack !== undefined && { isPartOfStack }),
+        ...(isPlanned !== undefined && { isPlanned }),
         updatedAt: new Date(),
       })
       .where(eq(branches.id, bId))
