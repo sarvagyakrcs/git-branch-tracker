@@ -1,0 +1,353 @@
+# Branch Tracker API - LLM Reference
+# This file describes how AI agents can interact with the Branch Tracker API
+
+## Overview
+Branch Tracker is a tool for managing stacked diffs and branch hierarchies across Git projects.
+It helps developers track the order and status of branches in a stack, verify ancestry relationships,
+and manage PR workflows.
+
+## Base URL
+Replace {BASE_URL} with your deployment URL (e.g., http://localhost:3000 or https://your-app.vercel.app)
+
+## Data Model
+
+### Project
+A project represents a Git repository being tracked.
+Fields:
+- id: number (auto-generated)
+- name: string (required)
+- description: string | null
+- masterBranch: string (default: "main") - the base branch for the project
+- repoUrl: string | null - URL to the repository
+- createdAt: timestamp
+- updatedAt: timestamp
+
+### Feature
+A feature groups related branches together (e.g., a ticket number like "11627").
+Fields:
+- id: number (auto-generated)
+- projectId: number (required)
+- identifier: string (required) - e.g., "11627"
+- name: string (required) - e.g., "Agent Eval Feature"
+- description: string | null
+- color: string (hex color, default: "#6366f1")
+- createdAt: timestamp
+- updatedAt: timestamp
+
+### Branch
+A branch in a stacked diff workflow.
+Fields:
+- id: number (auto-generated)
+- featureId: number (required)
+- name: string (required) - full branch name, e.g., "sarvagya-11627-db-infrastructure"
+- shortName: string | null - short description
+- position: number - order in the stack (1-based)
+- status: string - one of: "active", "pr_raised", "merged", "deprecated", "blocked"
+- prUrl: string | null - URL to the pull request
+- prNumber: number | null - PR number
+- notes: string | null
+- isPartOfStack: boolean (default: true) - whether this branch is actively part of the stack
+- createdAt: timestamp
+- updatedAt: timestamp
+
+## API Endpoints
+
+### Projects
+
+#### List all projects
+GET {BASE_URL}/api/projects
+
+Response:
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "My Project",
+      "description": "...",
+      "masterBranch": "main",
+      "repoUrl": "https://github.com/...",
+      "featureCount": 2,
+      "branchCount": 5,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ],
+  "error": null
+}
+
+#### Create a project
+POST {BASE_URL}/api/projects
+Content-Type: application/json
+
+Request body:
+{
+  "name": "My Project",           // required
+  "description": "Description",   // optional
+  "masterBranch": "main",         // optional, default: "main"
+  "repoUrl": "https://..."        // optional
+}
+
+Response: { "data": { ...project }, "error": null }
+
+#### Get a project
+GET {BASE_URL}/api/projects/{projectId}
+
+Response: { "data": { ...project, featureCount, branchCount }, "error": null }
+
+#### Update a project
+PUT {BASE_URL}/api/projects/{projectId}
+Content-Type: application/json
+
+Request body (all fields optional):
+{
+  "name": "New Name",
+  "description": "New description",
+  "masterBranch": "master",
+  "repoUrl": "https://..."
+}
+
+Response: { "data": { ...updatedProject }, "error": null }
+
+#### Delete a project
+DELETE {BASE_URL}/api/projects/{projectId}
+
+Response: { "data": { "success": true }, "error": null }
+
+### Features
+
+#### List features for a project
+GET {BASE_URL}/api/projects/{projectId}/features
+
+Response:
+{
+  "data": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "identifier": "11627",
+      "name": "Agent Eval",
+      "description": "...",
+      "color": "#6366f1",
+      "branchCount": 3,
+      "activeBranchCount": 3,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ],
+  "error": null
+}
+
+#### Create a feature
+POST {BASE_URL}/api/projects/{projectId}/features
+Content-Type: application/json
+
+Request body:
+{
+  "identifier": "11627",        // required
+  "name": "Feature Name",       // required
+  "description": "...",         // optional
+  "color": "#6366f1"            // optional
+}
+
+Response: { "data": { ...feature }, "error": null }
+
+#### Get a feature with branches
+GET {BASE_URL}/api/projects/{projectId}/features/{featureId}
+
+Response:
+{
+  "data": {
+    "id": 1,
+    "projectId": 1,
+    "identifier": "11627",
+    "name": "Agent Eval",
+    "projectName": "My Project",
+    "masterBranch": "main",
+    "branches": [
+      {
+        "id": 1,
+        "name": "sarvagya-11627-db-infrastructure",
+        "position": 1,
+        "status": "pr_raised",
+        ...
+      }
+    ]
+  },
+  "error": null
+}
+
+#### Update a feature
+PUT {BASE_URL}/api/projects/{projectId}/features/{featureId}
+Content-Type: application/json
+
+Request body (all fields optional):
+{
+  "identifier": "11628",
+  "name": "New Name",
+  "description": "...",
+  "color": "#22c55e"
+}
+
+Response: { "data": { ...updatedFeature }, "error": null }
+
+#### Delete a feature
+DELETE {BASE_URL}/api/projects/{projectId}/features/{featureId}
+
+Response: { "data": { "success": true }, "error": null }
+
+### Branches
+
+#### List branches in a feature
+GET {BASE_URL}/api/projects/{projectId}/features/{featureId}/branches
+
+Response:
+{
+  "data": [
+    {
+      "id": 1,
+      "featureId": 1,
+      "name": "sarvagya-11627-db-infrastructure",
+      "shortName": "db-infrastructure",
+      "position": 1,
+      "status": "pr_raised",
+      "prUrl": "https://github.com/.../pull/123",
+      "prNumber": 123,
+      "notes": "Sets up database tables",
+      "isPartOfStack": true,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ],
+  "error": null
+}
+
+#### Create a branch
+POST {BASE_URL}/api/projects/{projectId}/features/{featureId}/branches
+Content-Type: application/json
+
+Request body:
+{
+  "name": "sarvagya-11627-new-branch",  // required
+  "shortName": "new-branch",             // optional
+  "status": "active",                    // optional, default: "active"
+  "prUrl": "https://...",                // optional
+  "prNumber": 123,                       // optional
+  "notes": "...",                        // optional
+  "isPartOfStack": true                  // optional, default: true
+}
+
+Response: { "data": { ...branch }, "error": null }
+
+#### Get a branch
+GET {BASE_URL}/api/projects/{projectId}/features/{featureId}/branches/{branchId}
+
+Response: { "data": { ...branch }, "error": null }
+
+#### Update a branch
+PUT {BASE_URL}/api/projects/{projectId}/features/{featureId}/branches/{branchId}
+Content-Type: application/json
+
+Request body (all fields optional):
+{
+  "name": "new-branch-name",
+  "shortName": "short-name",
+  "position": 2,
+  "status": "merged",
+  "prUrl": "https://...",
+  "prNumber": 456,
+  "notes": "Updated notes",
+  "isPartOfStack": false
+}
+
+Response: { "data": { ...updatedBranch }, "error": null }
+
+#### Delete a branch
+DELETE {BASE_URL}/api/projects/{projectId}/features/{featureId}/branches/{branchId}
+
+Response: { "data": { "success": true }, "error": null }
+
+### Stack Verification
+
+#### Get stack verification commands
+GET {BASE_URL}/api/projects/{projectId}/features/{featureId}/verify-stack
+
+This endpoint returns git commands to verify that each branch in the stack is properly
+rebased on its parent branch. The commands are read-only and don't modify any branches.
+
+Response:
+{
+  "data": {
+    "branchCount": 3,
+    "branches": [
+      { "id": 1, "name": "branch-1", "position": 1, "status": "active" },
+      { "id": 2, "name": "branch-2", "position": 2, "status": "pr_raised" },
+      { "id": 3, "name": "branch-3", "position": 3, "status": "active" }
+    ],
+    "baseBranch": "main",
+    "oneLiner": "(git merge-base --is-ancestor main branch-1 && echo \"✅ 1. branch-1 ← main\" || echo \"❌ 1. NOT OK\"); ...",
+    "script": "#!/bin/bash\n# Stack Verification Script (read-only)\n..."
+  },
+  "error": null
+}
+
+## Common Workflows
+
+### 1. Setting up a new stacked diff workflow
+1. Create a project: POST /api/projects
+2. Create a feature for your ticket: POST /api/projects/{id}/features
+3. Add branches in order: POST /api/projects/{id}/features/{id}/branches (repeat)
+4. Update branch statuses as you work: PUT .../branches/{id}
+
+### 2. Checking stack health
+1. Get verification commands: GET .../features/{id}/verify-stack
+2. Run the returned script in your local repo to check ancestry
+
+### 3. Updating branch status after PR
+PUT /api/projects/{projectId}/features/{featureId}/branches/{branchId}
+{
+  "status": "pr_raised",
+  "prUrl": "https://github.com/org/repo/pull/123",
+  "prNumber": 123
+}
+
+### 4. Marking a branch as merged
+PUT /api/projects/{projectId}/features/{featureId}/branches/{branchId}
+{
+  "status": "merged"
+}
+
+### 5. Removing a branch from the stack (without deleting)
+PUT /api/projects/{projectId}/features/{featureId}/branches/{branchId}
+{
+  "isPartOfStack": false,
+  "status": "deprecated"
+}
+
+## Branch Status Values
+- "active": Branch is being actively worked on
+- "pr_raised": Pull request has been created
+- "merged": Branch has been merged into its parent
+- "deprecated": Branch is no longer part of the workflow
+- "blocked": Branch is blocked by dependencies or issues
+
+## Error Responses
+All endpoints return errors in this format:
+{
+  "data": null,
+  "error": "Error message describing what went wrong"
+}
+
+HTTP Status Codes:
+- 200: Success
+- 201: Created (for POST requests)
+- 400: Bad request (invalid input)
+- 404: Resource not found
+- 500: Server error
+
+## Authentication
+Currently, the API does not require authentication. For production deployments,
+consider adding authentication middleware.
+
+## Rate Limiting
+No rate limiting is currently enforced. Be respectful of server resources.
+

@@ -19,6 +19,8 @@ import {
   Search,
   Home,
   GitCompare,
+  Book,
+  Bot,
 } from "lucide-react";
 
 interface Project {
@@ -86,6 +88,14 @@ export function CommandMenu({ projects, features = [] }: CommandMenuProps) {
             <CommandItem onSelect={() => runCommand(() => router.push("/compare"))}>
               <GitCompare className="mr-2 h-4 w-4" />
               Compare Branches
+            </CommandItem>
+            <CommandItem onSelect={() => runCommand(() => router.push("/docs"))}>
+              <Book className="mr-2 h-4 w-4" />
+              API Documentation
+            </CommandItem>
+            <CommandItem onSelect={() => runCommand(() => window.open("/llms.txt", "_blank"))}>
+              <Bot className="mr-2 h-4 w-4" />
+              View llms.txt
             </CommandItem>
           </CommandGroup>
 
