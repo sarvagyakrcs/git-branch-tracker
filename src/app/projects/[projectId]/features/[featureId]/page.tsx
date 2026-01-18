@@ -119,6 +119,7 @@ export default async function FeaturePage({ params }: Props) {
                 branches={feature.branches}
                 projectId={pId}
                 featureId={fId}
+                baseBranch={feature.project.masterBranch}
               />
             )}
           </section>

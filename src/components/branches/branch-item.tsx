@@ -165,7 +165,7 @@ export function BranchItem({
                     <TooltipTrigger asChild>
                       <button
                         onClick={handleCopy}
-                        className={`font-mono text-sm hover:text-primary transition-colors text-left truncate max-w-[300px] ${
+                        className={`font-mono text-xs hover:text-primary transition-colors text-left break-all ${
                           isDeprecated ? "line-through text-muted-foreground" : ""
                         }`}
                       >
