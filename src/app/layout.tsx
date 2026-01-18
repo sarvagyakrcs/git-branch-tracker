@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Inter, Fira_Code } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import Noise from "@/components/Noise";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-geist-mono",
+const firaCode = Fira_Code({
+  variable: "--font-mono",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "Branch Tracker | Stacked Diffs Manager",
-  description: "Track and manage your stacked diffs across projects and features",
+  title: "Branch Tracker | Stacked Diffs",
+  description: "Track and manage your stacked diffs across projects",
 };
 
 export default function RootLayout({
@@ -27,9 +27,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body
-        className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} font-sans antialiased`}
-      >
+      <body className={`${inter.variable} ${firaCode.variable} font-sans antialiased`}>
+        {/* Subtle noise texture overlay */}
+        <Noise
+          patternSize={150}
+          patternScaleX={1}
+          patternScaleY={1}
+          patternRefreshInterval={2}
+          patternAlpha={15}
+        />
         {children}
         <Toaster richColors position="bottom-right" />
       </body>

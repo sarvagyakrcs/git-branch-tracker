@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getProject } from "@/actions/projects";
+import { getProject, getProjects } from "@/actions/projects";
 import { getFeatures } from "@/actions/features";
 import { FeatureCard } from "@/components/features/feature-card";
 import { FeatureCreateDialog } from "@/components/features/feature-create-dialog";
+import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, GitCompare, Layers } from "lucide-react";
+import { ChevronRight, GitCompare, Layers, Home } from "lucide-react";
 
 interface Props {
   params: Promise<{ projectId: string }>;
@@ -15,9 +16,10 @@ export default async function ProjectPage({ params }: Props) {
   const { projectId } = await params;
   const id = parseInt(projectId);
 
-  const [projectResult, featuresResult] = await Promise.all([
+  const [projectResult, featuresResult, projectsResult] = await Promise.all([
     getProject(id),
     getFeatures(id),
+    getProjects(),
   ]);
 
   if (projectResult.error || !projectResult.data) {
@@ -26,91 +28,109 @@ export default async function ProjectPage({ params }: Props) {
 
   const project = projectResult.data;
   const features = featuresResult.data || [];
+  const projects = projectsResult.data || [];
 
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto max-w-5xl px-6 py-8">
-        {/* Header */}
-        <header className="mb-8">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-            <Link href="/" className="hover:text-foreground transition-colors">
-              Projects
+    <AppShell 
+      projects={projects.map(p => ({ id: p.id, name: p.name }))}
+      features={features.map(f => ({ 
+        id: f.id, 
+        identifier: f.identifier, 
+        name: f.name, 
+        projectId: id 
+      }))}
+    >
+      <div className="min-h-screen">
+        <div className="mx-auto max-w-5xl px-6 py-8">
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6">
+            <Link href="/" className="hover:text-foreground transition-colors flex items-center gap-1">
+              <Home className="h-3.5 w-3.5" />
+              <span>Projects</span>
             </Link>
-            <ChevronLeft className="h-4 w-4 rotate-180" />
-            <span className="text-foreground">{project.name}</span>
-          </div>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="text-foreground font-medium">{project.name}</span>
+          </nav>
 
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">
-                {project.name}
-              </h1>
-              {project.description && (
-                <p className="mt-1 text-muted-foreground">
-                  {project.description}
-                </p>
-              )}
-              <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-                <span className="font-mono bg-muted px-2 py-0.5 rounded">
-                  {project.masterBranch}
-                </span>
-                {project.repoUrl && (
-                  <a
-                    href={project.repoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    View Repository →
-                  </a>
+          {/* Header */}
+          <header className="mb-10">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {project.name}
+                </h1>
+                {project.description && (
+                  <p className="mt-2 text-muted-foreground max-w-2xl">
+                    {project.description}
+                  </p>
                 )}
+                <div className="mt-3 flex items-center gap-3">
+                  <code className="text-xs font-mono bg-muted/50 px-2 py-1 rounded border border-border/50">
+                    {project.masterBranch}
+                  </code>
+                  {project.repoUrl && (
+                    <a
+                      href={project.repoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      View repo →
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Link href={`/compare?project=${id}`}>
+                  <Button variant="outline" size="sm" className="h-9">
+                    <GitCompare className="h-4 w-4 mr-2" />
+                    Compare
+                  </Button>
+                </Link>
+                <FeatureCreateDialog projectId={id} />
               </div>
             </div>
+          </header>
 
-            <div className="flex items-center gap-2">
-              <Link href={`/compare?project=${id}`}>
-                <Button variant="outline" size="sm">
-                  <GitCompare className="h-4 w-4 mr-2" />
-                  Compare
-                </Button>
-              </Link>
-              <FeatureCreateDialog projectId={id} />
+          {/* Features Section */}
+          <section>
+            <div className="mb-6 flex items-center gap-3">
+              <Layers className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-lg font-medium">Features</h2>
+              {features.length > 0 && (
+                <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium">
+                  {features.length}
+                </span>
+              )}
             </div>
-          </div>
-        </header>
 
-        {/* Features Section */}
-        <section>
-          <div className="mb-4 flex items-center gap-2">
-            <Layers className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-lg font-medium">Features</h2>
-            {features.length > 0 && (
-              <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                {features.length}
-              </span>
+            {features.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/50 bg-card/30 p-10 text-center">
+                <div className="mb-4 mx-auto w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
+                  <Layers className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground mb-4">No features yet</p>
+                <p className="text-sm text-muted-foreground/70 mb-6 max-w-sm mx-auto">
+                  Features group related branches together. E.g., "11627" could group all branches for ticket #11627.
+                </p>
+                <FeatureCreateDialog projectId={id} />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {features.map((feature, index) => (
+                  <FeatureCard
+                    key={feature.id}
+                    feature={feature}
+                    projectId={id}
+                    index={index}
+                  />
+                ))}
+              </div>
             )}
-          </div>
-
-          {features.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-8 text-center">
-              <Layers className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground mb-4">No features yet</p>
-              <FeatureCreateDialog projectId={id} />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {features.map((feature) => (
-                <FeatureCard
-                  key={feature.id}
-                  feature={feature}
-                  projectId={id}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+          </section>
+        </div>
       </div>
-    </div>
+    </AppShell>
   );
 }
-

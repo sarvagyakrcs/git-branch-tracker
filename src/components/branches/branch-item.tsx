@@ -4,6 +4,12 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -48,7 +54,6 @@ interface BranchItemProps {
   onSelect?: () => void;
 }
 
-// Lifecycle stage menu items
 const STAGE_MENU_ITEMS = [
   { key: "created", label: "Created", icon: Circle },
   { key: "wip", label: "WIP", icon: RotateCcw },
@@ -79,7 +84,9 @@ export function BranchItem({
   async function handleCopy() {
     await navigator.clipboard.writeText(branch.name);
     setCopied(true);
-    toast.success("Branch name copied");
+    toast.success("Copied to clipboard", {
+      description: branch.name,
+    });
     setTimeout(() => setCopied(false), 2000);
   }
 
@@ -108,106 +115,133 @@ export function BranchItem({
   }
 
   return (
-    <>
-      <div className="relative flex items-start gap-3 py-2">
-        {/* Connector dot - clickable for selection */}
-        <button
-          onClick={onSelect}
-          className={`relative z-10 mt-4 h-4 w-4 rounded-full border-2 transition-all cursor-pointer hover:scale-125 ${
-            isSelected
-              ? "border-primary bg-primary"
-              : isDeprecated
-              ? "border-muted-foreground/30 bg-background hover:border-primary/50"
-              : "border-primary bg-background hover:bg-primary/20"
-          }`}
-          title={isSelected ? `Selected as ${selectionOrder === 1 ? "parent" : "child"}` : "Click to select for comparison"}
-        >
-          {isSelected && (
-            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-primary-foreground">
-              {selectionOrder}
-            </span>
-          )}
-        </button>
+    <TooltipProvider delayDuration={300}>
+      <div className="relative flex items-start gap-3 py-1.5 group/item">
+        {/* Selection dot */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onSelect}
+              className={`relative z-10 mt-3.5 h-4 w-4 rounded-full border-2 transition-all cursor-pointer hover:scale-110 ${
+                isSelected
+                  ? "border-primary bg-primary shadow-md shadow-primary/30"
+                  : isDeprecated
+                  ? "border-muted-foreground/30 bg-background hover:border-primary/50"
+                  : "border-primary/60 bg-background hover:border-primary hover:bg-primary/10"
+              }`}
+            >
+              {isSelected && (
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-primary-foreground">
+                  {selectionOrder}
+                </span>
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left" className="text-xs">
+            {isSelected 
+              ? `Selected as ${selectionOrder === 1 ? "parent" : "child"}`
+              : "Click to select for compare"
+            }
+          </TooltipContent>
+        </Tooltip>
 
         {/* Branch card */}
         <Card
-          className={`flex-1 transition-all ${
-            isDeprecated ? "opacity-50" : "hover:bg-accent/50"
-          } ${isSelected ? "ring-2 ring-primary/50" : ""}`}
+          className={`flex-1 border-border/50 transition-all duration-150 ${
+            isDeprecated 
+              ? "opacity-50 bg-card/30" 
+              : "bg-card/50 hover:bg-card/80 hover:border-border"
+          } ${isSelected ? "ring-1 ring-primary/40 bg-primary/5" : ""}`}
         >
           <CardContent className="p-3">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-muted-foreground font-mono">
+                {/* Branch name row */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground/70 font-mono tabular-nums w-5">
                     {position}.
                   </span>
-                  <button
-                    onClick={handleCopy}
-                    className={`font-mono text-sm hover:text-primary transition-colors text-left truncate ${
-                      isDeprecated ? "line-through" : ""
-                    }`}
-                    title="Click to copy"
-                  >
-                    {branch.name}
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={handleCopy}
+                        className={`font-mono text-sm hover:text-primary transition-colors text-left truncate max-w-[300px] ${
+                          isDeprecated ? "line-through text-muted-foreground" : ""
+                        }`}
+                      >
+                        {branch.name}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Click to copy</TooltipContent>
+                  </Tooltip>
                   {copied && (
-                    <Check className="h-3 w-3 text-emerald-500" />
+                    <Check className="h-3.5 w-3.5 text-teal-400 shrink-0" />
                   )}
                 </div>
 
+                {/* Status row */}
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                   <BranchLifecycle status={branch.status} compact />
 
                   {branch.prUrl && (
-                    <a
-                      href={branch.prUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      {branch.prNumber ? `PR #${branch.prNumber}` : "View PR"}
-                    </a>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <a
+                          href={branch.prUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          {branch.prNumber ? `#${branch.prNumber}` : "PR"}
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent>Open PR in new tab</TooltipContent>
+                    </Tooltip>
                   )}
 
                   {!branch.isPartOfStack && (
-                    <span className="text-xs text-muted-foreground">
-                      (not in stack)
+                    <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">
+                      removed from stack
                     </span>
                   )}
                 </div>
 
                 {branch.notes && (
-                  <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+                  <p className="mt-2 text-xs text-muted-foreground/70 line-clamp-1">
                     {branch.notes}
                   </p>
                 )}
               </div>
 
+              {/* Actions */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                  >
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={handleCopy}>
                     <Copy className="h-4 w-4 mr-2" />
                     Copy name
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setEditOpen(true)}>
                     <Edit className="h-4 w-4 mr-2" />
-                    Edit details
+                    Edit
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
                       <RotateCcw className="h-4 w-4 mr-2" />
-                      Set stage
+                      Stage
                     </DropdownMenuSubTrigger>
                     <DropdownMenuPortal>
-                      <DropdownMenuSubContent className="w-48">
+                      <DropdownMenuSubContent className="w-44">
                         {STAGE_MENU_ITEMS.map((item) => {
                           const Icon = item.icon;
                           const isActive = branch.status === item.key;
@@ -219,7 +253,7 @@ export function BranchItem({
                             >
                               <Icon className="h-4 w-4 mr-2" />
                               {item.label}
-                              {isActive && <Check className="h-3 w-3 ml-auto" />}
+                              {isActive && <Check className="h-3 w-3 ml-auto text-primary" />}
                             </DropdownMenuItem>
                           );
                         })}
@@ -228,7 +262,7 @@ export function BranchItem({
                   </DropdownMenuSub>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    className="text-destructive"
+                    className="text-destructive focus:text-destructive"
                     onClick={handleDelete}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -248,7 +282,6 @@ export function BranchItem({
         open={editOpen}
         onOpenChange={setEditOpen}
       />
-    </>
+    </TooltipProvider>
   );
 }
-

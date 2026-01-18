@@ -52,8 +52,8 @@ export function BranchLifecycle({ status, compact }: BranchLifecycleProps) {
               key={stage.key}
               className={cn(
                 "h-1.5 w-1.5 rounded-full",
-                idx < currentIndex && "bg-emerald-500",
-                idx === currentIndex && (isMerged ? "bg-emerald-500" : "bg-primary"),
+                idx < currentIndex && "bg-teal-400",
+                idx === currentIndex && (isMerged ? "bg-teal-400" : "bg-primary"),
                 idx > currentIndex && "bg-muted-foreground/25"
               )}
             />
@@ -61,8 +61,8 @@ export function BranchLifecycle({ status, compact }: BranchLifecycleProps) {
         </div>
         <span className={cn(
           "text-xs",
-          isMerged && "text-emerald-500",
-          isChangesRequested && "text-amber-500",
+          isMerged && "text-teal-400",
+          isChangesRequested && "text-amber-400",
           !isMerged && !isChangesRequested && "text-muted-foreground"
         )}>
           {isChangesRequested ? "Changes requested" : LIFECYCLE_STAGES[currentIndex]?.label}
@@ -75,7 +75,7 @@ export function BranchLifecycle({ status, compact }: BranchLifecycleProps) {
   return (
     <div className="space-y-3">
       {isChangesRequested && (
-        <div className="text-xs text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2">
+        <div className="text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-md px-3 py-2">
           Changes requested — address feedback
         </div>
       )}
@@ -90,16 +90,16 @@ export function BranchLifecycle({ status, compact }: BranchLifecycleProps) {
             <div key={stage.key} className="flex-1 space-y-1.5">
               <div
                 className={cn(
-                  "h-2 rounded-full transition-colors",
-                  isComplete && "bg-emerald-500",
-                  isCurrent && (isMerged ? "bg-emerald-500" : "bg-primary"),
+                  "h-1.5 rounded-full transition-colors",
+                  isComplete && "bg-teal-400",
+                  isCurrent && (isMerged ? "bg-teal-400" : "bg-primary"),
                   !isComplete && !isCurrent && "bg-muted"
                 )}
               />
               <p className={cn(
                 "text-[10px] text-center",
-                isComplete && "text-emerald-500",
-                isCurrent && (isMerged ? "text-emerald-500" : "text-foreground font-medium"),
+                isComplete && "text-teal-400",
+                isCurrent && (isMerged ? "text-teal-400" : "text-foreground font-medium"),
                 !isComplete && !isCurrent && "text-muted-foreground/50"
               )}>
                 {stage.label}
